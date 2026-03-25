@@ -2,32 +2,96 @@
 
 import { useState } from "react";
 
+import { Session } from "@heroiclabs/nakama-js";
+
 export default function LobbyPage() {
-  const [roomName, setRoomName] = useState("");
+  const [roomId, setRoomId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [roomResult, setRoomResult] = useState<{
+    roomId: string;
+    groupId: string;
+    groupName: string;
+    userId: string;
+  } | null>(null);
 
-  const handleCreateRoom = () => {
-    if (!roomName.trim()) {
-      alert("Please enter a room name");
-      return;
+  const STORAGE_KEY = "lila.nakama.session";
+
+  const loadSavedSession = (): Session | null => {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as { token: string; refreshToken: string };
+      if (!parsed?.token) return null;
+      return Session.restore(parsed.token, parsed.refreshToken ?? "");
+      
+    } catch {
+      return null;
     }
-    setIsCreating(true);
-    // TODO: Call backend to create room
-    console.log("Creating room:", roomName);
-    setTimeout(() => setIsCreating(false), 1000);
   };
 
-  const handleJoinRoom = () => {
-    if (!roomName.trim()) {
-      alert("Please enter a room name");
+  const callRoomApi = async (path: "/api/room" | "/api/room/join") => {
+    setMessage(null);
+    setRoomResult(null);
+
+    const session = loadSavedSession();
+    if (!session?.token) {
+      setMessage("You need to sign in first to create/join a room.");
       return;
     }
+
+    const trimmedRoomId = roomId.trim();
+    if (!trimmedRoomId) {
+      setMessage("Please enter a room name.");
+      return;
+    }
+
+    const res = await fetch(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`
+      },
+      body: JSON.stringify({ roomId: trimmedRoomId })
+    });
+
+    const data = (await res.json().catch(() => ({}))) as
+      | { error?: string; details?: string }
+      | { roomId: string; groupId: string; groupName: string; userId: string };
+
+    if (!res.ok) {
+      const err = "error" in data && data.error ? data.error : "Request failed.";
+      const details = "details" in data && data.details ? ` (${data.details})` : "";
+      setMessage(`${err}${details}`);
+      return;
+    }
+
+    if ("roomId" in data) {
+      setRoomResult(data);
+      setMessage(path === "/api/room" ? "Room ready." : "Joined room.");
+    } else {
+      setMessage("Unexpected response from server.");
+    }
+  };
+
+  const handleCreateRoom = async () => {
+    setIsCreating(true);
+    try {
+      await callRoomApi("/api/room");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleJoinRoom = async () => {
     setIsJoining(true);
-    // TODO: Call backend to join room
-    console.log("Joining room:", roomName);
-    setTimeout(() => setIsJoining(false), 1000);
+    try {
+      await callRoomApi("/api/room/join");
+    } finally {
+      setIsJoining(false);
+    }
   };
 
   const handleRandomMatch = () => {
@@ -54,8 +118,8 @@ export default function LobbyPage() {
             <input
               type="text"
               placeholder="Enter room name..."
-              value={roomName}
-              onChange={(e) => setRoomName(e.target.value)}
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)}
               disabled={isRoomActionInProgress}
               className="flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2 text-sm placeholder-zinc-500 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             />
@@ -79,6 +143,22 @@ export default function LobbyPage() {
           <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
             Create a new room or join an existing one using the same room name.
           </p>
+          {message ? (
+            <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-200">{message}</p>
+          ) : null}
+          {roomResult ? (
+            <div className="mt-3 rounded-lg border border-zinc-200/70 bg-white/60 p-3 text-xs text-zinc-700 dark:border-zinc-800/60 dark:bg-zinc-950/20 dark:text-zinc-200">
+              <div>
+                <span className="font-medium">Room:</span> <code>{roomResult.roomId}</code>
+              </div>
+              <div>
+                <span className="font-medium">Group:</span> <code>{roomResult.groupId}</code>
+              </div>
+              <div>
+                <span className="font-medium">You:</span> <code>{roomResult.userId}</code>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Random Match Section */}
