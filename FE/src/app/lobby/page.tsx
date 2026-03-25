@@ -5,6 +5,7 @@ import { useState } from "react";
 export default function LobbyPage() {
   const [roomName, setRoomName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
 
   const handleCreateRoom = () => {
@@ -18,12 +19,25 @@ export default function LobbyPage() {
     setTimeout(() => setIsCreating(false), 1000);
   };
 
+  const handleJoinRoom = () => {
+    if (!roomName.trim()) {
+      alert("Please enter a room name");
+      return;
+    }
+    setIsJoining(true);
+    // TODO: Call backend to join room
+    console.log("Joining room:", roomName);
+    setTimeout(() => setIsJoining(false), 1000);
+  };
+
   const handleRandomMatch = () => {
     setIsMatching(true);
     // TODO: Call backend to find random match
     console.log("Finding random match...");
     setTimeout(() => setIsMatching(false), 1000);
   };
+
+  const isRoomActionInProgress = isCreating || isJoining;
 
   return (
     <section className="rounded-2xl border border-zinc-200/70 bg-white/70 p-8 shadow-sm backdrop-blur dark:border-zinc-800/60 dark:bg-zinc-900/30">
@@ -33,28 +47,37 @@ export default function LobbyPage() {
       </p>
 
       <div className="mt-8 flex flex-col gap-6 lg:flex-row">
-        {/* Create Room Section */}
+        {/* Create / Join Room Section */}
         <div className="flex-1 rounded-lg border border-zinc-200/50 dark:border-zinc-800 p-6 bg-zinc-50/50 dark:bg-zinc-800/20">
-          <h2 className="text-lg font-medium mb-4">Create a Room</h2>
+          <h2 className="text-lg font-medium mb-4">Room</h2>
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
               placeholder="Enter room name..."
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
-              disabled={isCreating}
+              disabled={isRoomActionInProgress}
               className="flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2 text-sm placeholder-zinc-500 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <button
-              onClick={handleCreateRoom}
-              disabled={isCreating}
-              className="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-2 font-medium text-white transition-colors"
-            >
-              {isCreating ? "Creating..." : "Create Room"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCreateRoom}
+                disabled={isRoomActionInProgress}
+                className="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-2 font-medium text-white transition-colors"
+              >
+                {isCreating ? "Creating..." : "Create"}
+              </button>
+              <button
+                onClick={handleJoinRoom}
+                disabled={isRoomActionInProgress}
+                className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white/70 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed px-6 py-2 font-medium text-zinc-900 dark:bg-zinc-900/30 dark:hover:bg-zinc-900/50 dark:text-zinc-100 transition-colors"
+              >
+                {isJoining ? "Joining..." : "Join"}
+              </button>
+            </div>
           </div>
           <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-            Enter a room name to invite another player to join your game.
+            Create a new room or join an existing one using the same room name.
           </p>
         </div>
 

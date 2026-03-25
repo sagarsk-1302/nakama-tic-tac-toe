@@ -13,7 +13,7 @@ function loadSavedSession(): Session | null {
   try {
     const parsed = JSON.parse(raw) as { token: string; refreshToken: string };
     if (!parsed?.token || !parsed?.refreshToken) return null;
-    return Session.restore(parsed.token, parsed.refresh_token);
+    return Session.restore(parsed.token, parsed.refreshToken);
   } catch {
     return null;
   }
