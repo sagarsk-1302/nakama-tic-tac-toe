@@ -1,11 +1,35 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Session } from "@heroiclabs/nakama-js";
+
+const STORAGE_KEY = "lila.nakama.session";
+
+function loadSavedSession(): Session | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { token: string; refreshToken: string };
+    if (!parsed?.token || !parsed?.refreshToken) return null;
+    return Session.restore(parsed.token, parsed.refresh_token);
+  } catch {
+    return null;
+  }
+}
+
 export default function HomePage() {
-  return (
-    <section className="rounded-2xl border border-zinc-200/70 bg-white/70 p-6 shadow-sm backdrop-blur dark:border-zinc-800/60 dark:bg-zinc-900/30">
-      <h1 className="text-2xl font-semibold tracking-tight">Next.js FE</h1>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-        Minimal Next.js (App Router) frontend scaffold in the <code>FE</code>{" "}
-        folder.
-      </p>
-    </section>
-  );
+  const router = useRouter();
+
+  useEffect(() => {
+    const saved = loadSavedSession();
+    if (saved) {
+      router.push("/lobby");
+    } else {
+      router.push("/auth");
+    }
+  }, [router]);
+
+  return null;
 }

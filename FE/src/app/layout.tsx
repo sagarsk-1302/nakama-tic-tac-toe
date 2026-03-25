@@ -22,9 +22,6 @@ export default function RootLayout({
             <Nav />
           </header>
           <main className="mt-6 flex-1">{children}</main>
-          <footer className="mt-10 text-xs text-zinc-500 dark:text-zinc-400">
-            FE - Next.js App Router - Tailwind CSS
-          </footer>
         </div>
       </body>
     </html>

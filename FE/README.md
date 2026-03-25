@@ -10,3 +10,4 @@ npm run dev
 
 Open http://localhost:3000
 
+To use Turbopack instead: `npm run dev:turbo`
