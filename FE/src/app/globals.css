@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
+      Noto Sans, sans-serif;
+    line-height: 1.5;
+    @apply bg-zinc-50 text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-50;
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+
+  code {
+    @apply rounded bg-zinc-100 px-1 py-0.5 text-[0.85em] dark:bg-zinc-900/60;
+  }
+}
