@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import "./globals.css";
+import { AuthProvider } from "@/components/auth-provider";
 import Nav from "@/components/nav";
 
 export const metadata: Metadata = {
@@ -17,14 +18,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen">
-        <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-8">
-          <header>
-            <Nav />
-          </header>
-          <main className="mt-6 flex-1">{children}</main>
-        </div>
+        <AuthProvider>
+          <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-8">
+            <header>
+              <Nav />
+            </header>
+            <main className="mt-6 flex-1">{children}</main>
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );
 }
-

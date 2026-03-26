@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
-import { Session } from "@heroiclabs/nakama-js";
+
+import { useAuth } from "@/components/auth-provider";
 
 const linkClassName =
   "rounded-md px-2 py-1 text-sm font-medium transition-colors";
@@ -14,37 +15,14 @@ const activeLinkClassName =
 const inactiveLinkClassName =
   "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-900/60 dark:hover:text-zinc-50";
 
-const STORAGE_KEY = "lila.nakama.session";
-
-function loadSavedSession(): Session | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as { token: string; refresh_token: string };
-    if (!parsed?.token || !parsed?.refresh_token) return null;
-    return Session.restore(parsed.token, parsed.refresh_token);
-  } catch {
-    return null;
-  }
-}
-
 export default function Nav() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [username, setUsername] = useState<string | null>(null);
-  const [isReady, setIsReady] = useState(false);
+  const { isReady, session, signOut } = useAuth();
+  const username = session?.username ?? null;
 
   const isActive = (href: string) => pathname === href;
-
-  useEffect(() => {
-    const saved = loadSavedSession();
-    if (saved) {
-      setUsername(saved.username || "Player");
-    }
-    setIsReady(true);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,42 +36,33 @@ export default function Nav() {
   }, []);
 
   const handleSignout = () => {
-    window.localStorage.removeItem(STORAGE_KEY);
-    setUsername(null);
+    signOut();
     setIsOpen(false);
   };
 
   if (!isReady) return null;
 
+  const linkMap= [
+    { href: "/auth", label: "Auth", show: !username },
+    { href: "/lobby", label: "Lobby", show: true },
+    { href: "/leaderboard", label: "Leaderboard", show: true },
+    { href: "/about", label: "About", show: true }
+  ];
+
   return (
     <nav className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        {!username && (
-          <Link
-            className={`${linkClassName} ${isActive("/auth") ? activeLinkClassName : inactiveLinkClassName}`}
-            href="/auth"
-          >
-            Auth
+        {linkMap
+          .filter((link) => link.show)
+          .map((link) => (
+            <Link
+              key={link.href}
+              className={`${linkClassName} ${isActive(link.href) ? activeLinkClassName : inactiveLinkClassName}`}
+              href={link.href}
+            >
+              {link.label}
           </Link>
-        )}
-        <Link
-          className={`${linkClassName} ${isActive("/lobby") ? activeLinkClassName : inactiveLinkClassName}`}
-          href="/lobby"
-        >
-          Lobby
-        </Link>
-        <Link
-          className={`${linkClassName} ${isActive("/leaderboard") ? activeLinkClassName : inactiveLinkClassName}`}
-          href="/leaderboard"
-        >
-          Leaderboard
-        </Link>
-        <Link
-          className={`${linkClassName} ${isActive("/about") ? activeLinkClassName : inactiveLinkClassName}`}
-          href="/about"
-        >
-          About
-        </Link>
+        ))}
       </div>
 
       {/* User Profile Card with Dropdown */}

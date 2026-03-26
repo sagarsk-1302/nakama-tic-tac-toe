@@ -2,34 +2,22 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Session } from "@heroiclabs/nakama-js";
 
-const STORAGE_KEY = "lila.nakama.session";
-
-function loadSavedSession(): Session | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as { token: string; refreshToken: string };
-    if (!parsed?.token || !parsed?.refreshToken) return null;
-    return Session.restore(parsed.token, parsed.refreshToken);
-  } catch {
-    return null;
-  }
-}
+import { useAuth } from "@/components/auth-provider";
 
 export default function HomePage() {
   const router = useRouter();
+  const { isReady, session } = useAuth();
 
   useEffect(() => {
-    const saved = loadSavedSession();
-    if (saved) {
+    if (!isReady) return;
+
+    if (session) {
       router.push("/lobby");
     } else {
       router.push("/auth");
     }
-  }, [router]);
+  }, [isReady, router, session]);
 
   return null;
 }
