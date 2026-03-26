@@ -8,6 +8,12 @@ import { log } from "console";
 export type RoomApiBody = {
   roomId?: unknown;
   token?: unknown;
+  gameId?: unknown;
+  playerIds?: unknown;
+  winner?: unknown;
+  startedAt?: unknown;
+  endedAt?: unknown;
+  board?: unknown;
 };
 
 export class ApiHttpError extends Error {
@@ -43,6 +49,7 @@ async function readJsonBody(req: Request): Promise<RoomApiBody> {
 }
 
 export async function getRoomApiContext(req: Request): Promise<{
+  body: RoomApiBody;
   roomId: string;
   groupName: string;
   userId: string;
@@ -93,6 +100,7 @@ export async function getRoomApiContext(req: Request): Promise<{
   }
 
   return {
+    body,
     roomId,
     groupName: toRoomGroupName(roomId),
     userId,
@@ -100,4 +108,3 @@ export async function getRoomApiContext(req: Request): Promise<{
     client
   };
 }
-
