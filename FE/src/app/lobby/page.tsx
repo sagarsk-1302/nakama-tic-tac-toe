@@ -1,11 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/auth-provider";
 
+type RoomApiSuccess = {
+  roomId: string;
+  groupId: string;
+  groupName: string;
+  userId: string;
+};
+
+function extractRoomIdFromGroupName(groupName: string): string {
+  return groupName.replace(/^room_/i, "");
+}
+
+function buildGameUrl(result: RoomApiSuccess): string {
+  const params = new URLSearchParams({
+    roomId: result.roomId,
+    groupId: result.groupId,
+    groupName: result.groupName
+  });
+  return `/game?${params.toString()}`;
+}
+
 export default function LobbyPage() {
   const { session } = useAuth();
+  const router = useRouter();
   const [roomId, setRoomId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -22,26 +44,24 @@ export default function LobbyPage() {
     }>
   >([]);
   const [message, setMessage] = useState<string | null>(null);
-  const [roomResult, setRoomResult] = useState<{
-    roomId: string;
-    groupId: string;
-    groupName: string;
-    userId: string;
-  } | null>(null);
+  const [roomResult, setRoomResult] = useState<RoomApiSuccess | null>(null);
 
-  const callRoomApi = async (path: "/api/room" | "/api/room/join", inputRoomId?: string) => {
+  const callRoomApi = async (
+    path: "/api/room" | "/api/room/join",
+    inputRoomId?: string
+  ): Promise<RoomApiSuccess | null> => {
     setMessage(null);
     setRoomResult(null);
 
     if (!session?.token) {
       setMessage("You need to sign in first to create/join a room.");
-      return;
+      return null;
     }
 
     const trimmedRoomId = (inputRoomId ?? roomId).trim();
     if (!trimmedRoomId) {
       setMessage("Please enter a room name.");
-      return;
+      return null;
     }
 
     const res = await fetch(path, {
@@ -61,14 +81,16 @@ export default function LobbyPage() {
       const err = "error" in data && data.error ? data.error : "Request failed.";
       const details = "details" in data && data.details ? ` (${data.details})` : "";
       setMessage(`${err}${details}`);
-      return;
+      return null;
     }
 
     if ("roomId" in data) {
       setRoomResult(data);
       setMessage(path === "/api/room" ? "Room ready." : "Joined room.");
+      return data;
     } else {
       setMessage("Unexpected response from server.");
+      return null;
     }
   };
 
@@ -132,7 +154,11 @@ export default function LobbyPage() {
   const handleCreateRoom = async () => {
     setIsCreating(true);
     try {
-      await callRoomApi("/api/room");
+      const result = await callRoomApi("/api/room");
+      if (result) {
+        router.push(buildGameUrl(result));
+        return;
+      }
       await fetchRooms();
     } finally {
       setIsCreating(false);
@@ -142,18 +168,49 @@ export default function LobbyPage() {
   const handleJoinRoom = async (inputRoomId?: string) => {
     setIsJoining(true);
     try {
-      await callRoomApi("/api/room/join", inputRoomId);
+      const result = await callRoomApi("/api/room/join", inputRoomId);
+      if (result) {
+        router.push(buildGameUrl(result));
+        return;
+      }
       await fetchRooms();
     } finally {
       setIsJoining(false);
     }
   };
 
-  const handleRandomMatch = () => {
+  const handleRandomMatch = async () => {
+    setMessage(null);
+
+    if (!session?.token) {
+      setMessage("You need to sign in first to find a match.");
+      return;
+    }
+
     setIsMatching(true);
-    // TODO: Call backend to find random match
-    console.log("Finding random match...");
-    setTimeout(() => setIsMatching(false), 1000);
+    try {
+      const waitingRoom = rooms.find((room) => room.open && room.userCount === 1 && room.maxCount > 1);
+
+      if (waitingRoom) {
+        const waitingRoomId = extractRoomIdFromGroupName(waitingRoom.name);
+        const joined = await callRoomApi("/api/room/join", waitingRoomId);
+        if (joined) {
+          router.push(buildGameUrl(joined));
+          return;
+        }
+      }
+
+      const randomRoomId = `quick_${Math.random().toString(36).slice(2, 8)}`;
+      const created = await callRoomApi("/api/room", randomRoomId);
+      if (created) {
+        router.push(buildGameUrl(created));
+        return;
+      }
+
+      await fetchRooms();
+    } finally {
+      setIsMatching(false);
+    }
   };
 
   const isRoomActionInProgress = isCreating || isJoining;
@@ -273,8 +330,9 @@ export default function LobbyPage() {
                     </div>
                     <button
                       onClick={() => {
-                        setRoomId(room.name);
-                        void handleJoinRoom(room.name);
+                        const selectedRoomId = extractRoomIdFromGroupName(room.name);
+                        setRoomId(selectedRoomId);
+                        void handleJoinRoom(selectedRoomId);
                       }}
                       disabled={isRoomActionInProgress || !room.open || room.userCount >= room.maxCount}
                       className="rounded-md bg-zinc-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
